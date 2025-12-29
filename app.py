@@ -16,12 +16,9 @@ st.title("RAG-Based Chatbot")
 # ----------------------
 # Load Documents
 # ----------------------
-
 loader = TextLoader("data/sample.txt")
+documents = loader.load()
 
-
-# Optional check
-st.write("Documents loaded:", documents)
 # ----------------------
 # Split Text
 # ----------------------
