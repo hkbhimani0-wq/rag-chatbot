@@ -1,0 +1,139 @@
+Parallel and Distributed Computing
+Introduction
+
+Parallel and Distributed Computing are advanced computing techniques used to improve system performance, speed, and efficiency by executing multiple tasks simultaneously. These approaches are widely used in modern systems such as cloud computing, big data processing, artificial intelligence, and scientific simulations.
+
+Parallel Computing
+Definition
+
+Parallel computing is a type of computation in which multiple processors or cores work together simultaneously to solve a single problem by dividing it into smaller sub-tasks.
+
+Key Characteristics
+
+Tasks are executed at the same time
+
+Uses multiple CPUs or cores
+
+Processors usually share common memory
+
+Improves execution speed and performance
+
+Types of Parallel Computing
+
+Bit-level Parallelism
+
+Instruction-level Parallelism
+
+Data Parallelism
+
+Task Parallelism
+
+Advantages
+
+Faster processing
+
+Efficient use of hardware resources
+
+Reduced execution time
+
+Suitable for computation-intensive tasks
+
+Disadvantages
+
+Complex programming
+
+Synchronization issues
+
+Hardware cost can be high
+
+Examples
+
+Multi-core processors
+
+Graphics Processing Units (GPUs)
+
+Scientific simulations
+
+Image and video processing
+
+Distributed Computing
+Definition
+
+Distributed computing is a computing model where multiple independent computers (nodes) work together over a network to achieve a common goal.
+
+Key Characteristics
+
+Computers are connected via a network
+
+Each node has its own memory and processor
+
+Communication occurs using message passing
+
+Systems can be geographically distributed
+
+Types of Distributed Systems
+
+Client-Server Systems
+
+Peer-to-Peer Systems
+
+Cluster Computing
+
+Grid Computing
+
+Cloud Computing
+
+Advantages
+
+High scalability
+
+Resource sharing
+
+Fault tolerance
+
+Cost-effective
+
+Disadvantages
+
+Network dependency
+
+Security risks
+
+Data consistency challenges
+
+Communication delays
+
+Examples
+
+Cloud services (AWS, Azure, Google Cloud)
+
+Distributed databases
+
+Online banking systems
+
+Content Delivery Networks (CDNs)
+
+Difference Between Parallel and Distributed Computing
+Feature	Parallel Computing	Distributed Computing
+Processors	Multiple processors in one system	Multiple computers
+Memory	Shared memory	Separate memory
+Communication	Very fast	Network-based
+Scalability	Limited	Highly scalable
+Fault Tolerance	Low	High
+Applications
+
+Artificial Intelligence and Machine Learning
+
+Big Data Analytics
+
+Weather Forecasting
+
+Online Transaction Systems
+
+Scientific Research
+
+Cloud-based Applications
+
+Conclusion
+
+Parallel and Distributed Computing play a vital role in modern computing systems. Parallel computing focuses on improving performance by simultaneous execution within a single system, while distributed computing emphasizes scalability and resource sharing across multiple systems. Both approaches are essential for handling complex, large-scale computational problems efficiently.
