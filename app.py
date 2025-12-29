@@ -19,12 +19,17 @@ st.title("RAG-Based Chatbot")
 # ----------------------
 file_path = "./data/sample.txt"
 if not os.path.exists(file_path):
-    st.error(f"File not found: {file_path}")
+    st.error(f"File not found: {file_path}. Please upload sample.txt in data folder.")
     st.stop()
 
 loader = TextLoader(file_path)
 documents = loader.load()
-st.write("Documents loaded:", len(documents), "document(s)")
+
+# Only write if documents were loaded
+if documents:
+    st.write("Documents loaded:", len(documents), "document(s)")
+else:
+    st.warning("No documents found in the file.")
 
 # ----------------------
 # Split Text
