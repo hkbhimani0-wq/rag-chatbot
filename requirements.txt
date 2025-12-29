@@ -1,6 +1,6 @@
-streamlit
-faiss-cpu
-sentence-transformers
-huggingface-hub
-langchain==0.0.203
-transformers
+streamlit==1.30.0
+faiss-cpu==1.7.4
+sentence-transformers==2.2.2
+huggingface-hub==0.16.4
+langchain==0.1.0
+transformers==4.35.0
