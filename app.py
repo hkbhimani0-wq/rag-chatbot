@@ -1,9 +1,11 @@
+# app.py
 import streamlit as st
+import os
+from langchain.document_loaders import TextLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.vectorstores import FAISS
 from langchain.chains import RetrievalQA
-from langchain.document_loaders import TextLoader
 from langchain.llms import HuggingFacePipeline
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, pipeline
 
@@ -11,13 +13,22 @@ from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, pipeline
 # Streamlit Page Setup
 # ----------------------
 st.set_page_config(page_title="RAG Chatbot", layout="centered")
-st.title("RAG-Based Chatbot")
+st.title("RAG-Based Chatbot)")
+
+# ----------------------
+# Debug: Check files (optional)
+# ----------------------
+st.write("Current working directory:", os.getcwd())
+st.write("Files in repo root:", os.listdir())
+if os.path.exists("data"):
+    st.write("Files in data folder:", os.listdir("data"))
 
 # ----------------------
 # Load Documents
 # ----------------------
-loader = TextLoader("data/sample.txt")
+loader = TextLoader("./data/sample.txt")  # Use relative path from repo root
 documents = loader.load()
+st.write("Documents loaded:", len(documents), "document(s)")
 
 # ----------------------
 # Split Text
