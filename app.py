@@ -1,13 +1,11 @@
 import streamlit as st
 import os
-
-from langchain.document_loaders import Docx2txtLoader
+import docx2txt
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.vectorstores import FAISS
 from langchain.chains import RetrievalQA
 from langchain.llms import HuggingFacePipeline
-
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, pipeline
 
 # ----------------------
@@ -17,41 +15,46 @@ st.set_page_config(page_title="RAG Chatbot", layout="centered")
 st.title("RAG-Based Chatbot")
 
 # ----------------------
-# DOCX File Path
+# Data folder check
 # ----------------------
-DOCX_PATH = "./data/sample.docx"
-
-# ----------------------
-# Load DOCX Document
-# ----------------------
-if not os.path.exists(DOCX_PATH):
-    st.error("❌ sample.docx not found! Please upload it in the data folder.")
+data_folder = "./data"
+if not os.path.exists(data_folder):
+    st.error(f"Data folder not found: {data_folder}")
     st.stop()
 
-loader = Docx2txtLoader(DOCX_PATH)
-documents = loader.load()
-
-if not documents:
-    st.error("❌ DOCX file is empty.")
+# Look for DOCX files in data folder
+docx_files = [f for f in os.listdir(data_folder) if f.endswith(".docx")]
+if not docx_files:
+    st.error("No .docx file found in data folder. Please upload sample.docx")
     st.stop()
 
-st.success(f"✅ Documents loaded: {len(documents)}")
+# Take the first DOCX file (can extend to multiple)
+file_path = os.path.join(data_folder, docx_files[0])
+
+# ----------------------
+# Load Documents
+# ----------------------
+try:
+    text = docx2txt.process(file_path)
+    if not text.strip():
+        st.warning("The document is empty.")
+        st.stop()
+except Exception as e:
+    st.error(f"Error reading DOCX file: {e}")
+    st.stop()
+
+st.write(f"Document loaded: {docx_files[0]}")
 
 # ----------------------
 # Split Text
 # ----------------------
-text_splitter = RecursiveCharacterTextSplitter(
-    chunk_size=500,
-    chunk_overlap=50
-)
-docs = text_splitter.split_documents(documents)
+text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
+docs = text_splitter.create_documents([text])
 
 # ----------------------
 # Embeddings
 # ----------------------
-embeddings = HuggingFaceEmbeddings(
-    model_name="sentence-transformers/all-MiniLM-L6-v2"
-)
+embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 
 # ----------------------
 # Vector Store
@@ -59,30 +62,30 @@ embeddings = HuggingFaceEmbeddings(
 vectorstore = FAISS.from_documents(docs, embeddings)
 
 # ----------------------
-# Load LLM (FREE – No Token)
+# Load LLM Locally (No Token Needed)
 # ----------------------
 model_name = "google/flan-t5-small"
-
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
 
 pipe = pipeline(
-    "text2text-generation",
+    task="text2text-generation",
     model=model,
     tokenizer=tokenizer,
     max_length=512,
-    temperature=0.3
+    temperature=0.5
 )
 
 llm = HuggingFacePipeline(pipeline=pipe)
 
 # ----------------------
-# RAG QA Chain
+# QA Chain
 # ----------------------
 qa_chain = RetrievalQA.from_chain_type(
     llm=llm,
     chain_type="stuff",
-    retriever=vectorstore.as_retriever()
+    retriever=vectorstore.as_retriever(),
+    return_source_documents=True  # Needed to check document scope
 )
 
 # ----------------------
@@ -91,9 +94,12 @@ qa_chain = RetrievalQA.from_chain_type(
 query = st.text_input("Ask a question from the document:")
 
 if query:
-    response = qa_chain.run(query)
+    result = qa_chain({"query": query})
+    answer = result['result']
+    sources = result['source_documents']
 
-    if "i don't know" in response.lower() or "not found" in response.lower():
-        st.warning("⚠️ This question is outside the document scope.")
+    # Check if any document chunk was retrieved
+    if not sources or not answer.strip():
+        st.warning("⚠ This question is outside the document scope.")
     else:
-        st.success(response)
+        st.success(answer)
