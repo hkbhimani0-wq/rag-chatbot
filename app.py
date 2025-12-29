@@ -1,4 +1,3 @@
-# app.py
 import streamlit as st
 import os
 from langchain.document_loaders import TextLoader
@@ -13,20 +12,17 @@ from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, pipeline
 # Streamlit Page Setup
 # ----------------------
 st.set_page_config(page_title="RAG Chatbot", layout="centered")
-st.title("RAG-Based Chatbot)")
-
-# ----------------------
-# Debug: Check files (optional)
-# ----------------------
-st.write("Current working directory:", os.getcwd())
-st.write("Files in repo root:", os.listdir())
-if os.path.exists("data"):
-    st.write("Files in data folder:", os.listdir("data"))
+st.title("RAG-Based Chatbot")
 
 # ----------------------
 # Load Documents
 # ----------------------
-loader = TextLoader("./data/sample.txt")  # Use relative path from repo root
+file_path = "./data/sample.txt"
+if not os.path.exists(file_path):
+    st.error(f"File not found: {file_path}")
+    st.stop()
+
+loader = TextLoader(file_path)
 documents = loader.load()
 st.write("Documents loaded:", len(documents), "document(s)")
 
