@@ -1,105 +1,195 @@
 import streamlit as st
+
 import os
-import docx2txt
+
+from langchain.document_loaders import Docx2txtLoader
+
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+
 from langchain.embeddings import HuggingFaceEmbeddings
+
 from langchain.vectorstores import FAISS
-from langchain.chains import RetrievalQA
+
 from langchain.llms import HuggingFacePipeline
-from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, pipeline
 
-# ----------------------
-# Streamlit Page Setup
-# ----------------------
-st.set_page_config(page_title="RAG Chatbot", layout="centered")
-st.title("RAG-Based Chatbot")
+from langchain.chains import RetrievalQA
 
-# ----------------------
-# Data folder check
-# ----------------------
-data_folder = "./data"
-if not os.path.exists(data_folder):
-    st.error(f"Data folder not found: {data_folder}")
-    st.stop()
+from transformers import pipeline
 
-# Look for DOCX files in data folder
-docx_files = [f for f in os.listdir(data_folder) if f.endswith(".docx")]
-if not docx_files:
-    st.error("No .docx file found in data folder. Please upload sample.docx")
-    st.stop()
+---------------------------------
 
-# Take the first DOCX file (can extend to multiple)
-file_path = os.path.join(data_folder, docx_files[0])
+CONFIG
 
-# ----------------------
-# Load Documents
-# ----------------------
-try:
-    text = docx2txt.process(file_path)
-    if not text.strip():
-        st.warning("The document is empty.")
-        st.stop()
-except Exception as e:
-    st.error(f"Error reading DOCX file: {e}")
-    st.stop()
+---------------------------------
 
-st.write(f"Document loaded: {docx_files[0]}")
+SIMILARITY_THRESHOLD = 0.75
 
-# ----------------------
-# Split Text
-# ----------------------
-text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
-docs = text_splitter.create_documents([text])
+DOC_PATH = "data/sample.docx"
 
-# ----------------------
-# Embeddings
-# ----------------------
-embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 
-# ----------------------
-# Vector Store
-# ----------------------
-vectorstore = FAISS.from_documents(docs, embeddings)
+LLM_MODEL = "google/flan-t5-base"
 
-# ----------------------
-# Load LLM Locally (No Token Needed)
-# ----------------------
-model_name = "google/flan-t5-small"
-tokenizer = AutoTokenizer.from_pretrained(model_name)
-model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
+st.set_page_config(page_title="Chatbot", layout="centered")
+
+st.title("Chatbot")
+
+---------------------------------
+
+LOAD LLM
+
+---------------------------------
+
+@st.cache_resource
+
+def load_llm():
 
 pipe = pipeline(
-    task="text2text-generation",
-    model=model,
-    tokenizer=tokenizer,
-    max_length=512,
-    temperature=0.5
+
+    "text2text-generation",
+
+    model=LLM_MODEL,
+
+    max_length=512
+
 )
 
-llm = HuggingFacePipeline(pipeline=pipe)
+return HuggingFacePipeline(pipeline=pipe)
 
-# ----------------------
-# QA Chain
-# ----------------------
-qa_chain = RetrievalQA.from_chain_type(
-    llm=llm,
-    chain_type="stuff",
-    retriever=vectorstore.as_retriever(),
-    return_source_documents=True  # Needed to check document scope
+llm = load_llm()
+
+---------------------------------
+
+LOAD EMBEDDINGS
+
+---------------------------------
+
+@st.cache_resource
+
+def load_embeddings():
+
+return HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL)
+
+embeddings = load_embeddings()
+
+---------------------------------
+
+LOAD DOCUMENT & VECTORSTORE
+
+---------------------------------
+
+@st.cache_resource
+
+def load_vectorstore():
+
+if not os.path.exists(DOC_PATH):
+
+    raise FileNotFoundError("data/sample.docx not found")
+
+
+
+loader = Docx2txtLoader(DOC_PATH)
+
+documents = loader.load()
+
+
+
+splitter = RecursiveCharacterTextSplitter(
+
+    chunk_size=500,
+
+    chunk_overlap=50
+
 )
 
-# ----------------------
-# User Input
-# ----------------------
-query = st.text_input("Ask a question from the document:")
+chunks = splitter.split_documents(documents)
 
-if query:
-    result = qa_chain({"query": query})
-    answer = result['result']
-    sources = result['source_documents']
 
-    # Check if any document chunk was retrieved
-    if not sources or not answer.strip():
-        st.warning("⚠ This question is outside the document scope.")
-    else:
-        st.success(answer)
+
+return FAISS.from_documents(chunks, embeddings)
+
+vectorstore = load_vectorstore()
+
+---------------------------------
+
+USER INPUT
+
+---------------------------------
+
+question = st.text_input("Ask something")
+
+if question:
+
+docs_scores = vectorstore.similarity_search_with_score(
+
+    question, k=3
+
+)
+
+
+
+use_general_llm = True
+
+
+
+if docs_scores:
+
+    best_score = docs_scores[0][1]
+
+    if best_score < SIMILARITY_THRESHOLD:
+
+        use_general_llm = False
+
+
+
+# ---------------------------------
+
+# DOCUMENT-BASED (RAG)
+
+# ---------------------------------
+
+if not use_general_llm:
+
+    retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
+
+
+
+    qa_chain = RetrievalQA.from_chain_type(
+
+        llm=llm,
+
+        chain_type="stuff",
+
+        retriever=retriever
+
+    )
+
+
+
+    result = qa_chain(question)
+
+    st.write(result["result"])
+
+
+
+# ---------------------------------
+
+# GENERAL KNOWLEDGE FALLBACK
+
+# ---------------------------------
+
+else:
+
+    prompt = f"""
+
+Answer the following question clearly and correctly.
+
+Question:
+
+{question}
+
+"""
+
+response = llm(prompt)
+
+    st.write(response)
