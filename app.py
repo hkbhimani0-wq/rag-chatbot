@@ -1,3 +1,19 @@
+import os
+
+HF_TOKEN = os.getenv("HF_TOKEN")
+if not HF_TOKEN:
+    st.error("HF_TOKEN environment variable not set.")
+    st.stop()
+
+# Set env var explicitly — some older versions read from env only
+os.environ["HF_TOKEN"] = HF_TOKEN
+
+from huggingface_hub import InferenceClient
+
+client = InferenceClient(provider="together")  # no api_key argument
+
+
+
 import streamlit as st
 import os
 from langchain.document_loaders import Docx2txtLoader
