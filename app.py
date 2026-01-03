@@ -7,12 +7,16 @@ from langchain.vectorstores import FAISS
 from huggingface_hub import InferenceClient
 
 # ---------------------------------
-# CONFIG
+# CONFIGURATION
 # ---------------------------------
-SIMILARITY_THRESHOLD = 0.75  # Adjust if needed based on similarity metric
+SIMILARITY_THRESHOLD = 0.75  # Threshold to decide when to use document context
 DOC_PATH = "data/sample.docx"
 EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 LLM_MODEL = "moonshotai/Kimi-K2-Instruct-0905"
+HF_TOKEN = "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"  # Your Hugging Face token here
+
+# Set the Hugging Face token as an environment variable before using the client
+os.environ["HF_TOKEN"] = HF_TOKEN
 
 st.set_page_config(page_title="Chatbot", layout="centered")
 st.title("Chatbot with Hugging Face Inference API")
@@ -20,12 +24,7 @@ st.title("Chatbot with Hugging Face Inference API")
 # ---------------------------------
 # SETUP HUGGINGFACE INFERENCE CLIENT
 # ---------------------------------
-HF_TOKEN = os.environ.get("HF_TOKEN")
-if not HF_TOKEN:
-    st.error("Please set your HF_TOKEN environment variable in the environment.")
-    st.stop()
-
-client = InferenceClient(provider="together", api_key=HF_TOKEN)
+client = InferenceClient(provider="together")  # No need to pass api_key here if env var is set
 
 # ---------------------------------
 # LOAD EMBEDDINGS
@@ -68,8 +67,7 @@ def call_llm_api(prompt: str) -> str:
             parameters={"max_new_tokens": 512, "temperature": 0.7},
         )
 
-        # Depending on response structure, adapt here:
-        # Sometimes response is list, sometimes dict with 'generated_text'
+        # Parse generated text safely depending on response format
         if isinstance(response, list) and len(response) > 0:
             generated_text = response[0].get('generated_text', '')
         elif isinstance(response, dict):
@@ -88,36 +86,38 @@ def call_llm_api(prompt: str) -> str:
 # ---------------------------------
 # USER INPUT & PROCESSING
 # ---------------------------------
-question = st.text_input("Ask something")
+question = st.text_input("Ask something", placeholder="Type your question here...")
 
 if question:
-    # Search vectorstore for similarity scores
+    # Search vectorstore for similarity scores with the question
     docs_scores = vectorstore.similarity_search_with_score(question, k=3)
 
     use_general_llm = True
 
     if docs_scores:
         best_score = docs_scores[0][1]
-        # LangChain similarity score is distance (lower is better)
-        # So we should check if best_score <= threshold to use doc context
+        # For FAISS distance score, lower means more similar
         if best_score <= SIMILARITY_THRESHOLD:
             use_general_llm = False
 
     if not use_general_llm:
-        # Use vectorstore retriever to get relevant docs
+        # Retrieve relevant docs from vectorstore
         retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
         retrieved_docs = retriever.get_relevant_documents(question)
 
-        # Combine retrieved docs text as context
+        # Combine retrieved docs as context for prompt
         context_text = "\n\n".join([doc.page_content for doc in retrieved_docs])
-        prompt = f"Use the following context to answer the question clearly:\n\n{context_text}\n\nQuestion: {question}\nAnswer:"
+        prompt = (
+            f"Use the following context to answer the question clearly:\n\n"
+            f"{context_text}\n\nQuestion: {question}\nAnswer:"
+        )
 
         answer = call_llm_api(prompt)
         st.markdown("### Answer (using documents)")
         st.write(answer)
 
     else:
-        # Use general LLM without context
+        # Use general LLM without extra context
         prompt = f"Answer the following question clearly and correctly:\n\nQuestion: {question}\nAnswer:"
         answer = call_llm_api(prompt)
         st.markdown("### Answer (general knowledge)")
