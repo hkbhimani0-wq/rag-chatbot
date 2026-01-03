@@ -13,10 +13,13 @@ SIMILARITY_THRESHOLD = 0.75  # Threshold to decide when to use document context
 DOC_PATH = "data/sample.docx"
 EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 LLM_MODEL = "moonshotai/Kimi-K2-Instruct-0905"
-HF_TOKEN = "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"  # Your Hugging Face token here
 
-# Set the Hugging Face token as an environment variable before using the client
-os.environ["HF_TOKEN"] = HF_TOKEN
+# Read Hugging Face token from environment variable ONLY
+HF_TOKEN = os.getenv("HF_TOKEN")
+
+if not HF_TOKEN:
+    st.error("❌ HF_TOKEN environment variable not set. Please add it in Streamlit deployment settings (Secrets).")
+    st.stop()
 
 st.set_page_config(page_title="Chatbot", layout="centered")
 st.title("Chatbot with Hugging Face Inference API")
@@ -24,7 +27,7 @@ st.title("Chatbot with Hugging Face Inference API")
 # ---------------------------------
 # SETUP HUGGINGFACE INFERENCE CLIENT
 # ---------------------------------
-client = InferenceClient(provider="together")  # No need to pass api_key here if env var is set
+client = InferenceClient(provider="together", api_key=HF_TOKEN)
 
 # ---------------------------------
 # LOAD EMBEDDINGS
