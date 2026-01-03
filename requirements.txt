@@ -6,4 +6,3 @@ langchain==0.0.203
 transformers==4.35.0
 python-docx
 docx2txt
-huggingface_hub>=0.13.4
