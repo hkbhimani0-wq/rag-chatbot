@@ -13,11 +13,9 @@ SIMILARITY_THRESHOLD = 0.75  # Threshold to decide when to use document context
 DOC_PATH = "data/sample.docx"
 EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 LLM_MODEL = "moonshotai/Kimi-K2-Instruct-0905"
-Hf_TOKEN = "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"
 
-# Read Hugging Face token from environment variable ONLY
+# Read Hugging Face token from environment variable
 HF_TOKEN = os.getenv("HF_TOKEN")
-
 if not HF_TOKEN:
     st.error("❌ HF_TOKEN environment variable not set. Please add it in Streamlit deployment settings (Secrets).")
     st.stop()
@@ -71,7 +69,6 @@ def call_llm_api(prompt: str) -> str:
             parameters={"max_new_tokens": 512, "temperature": 0.7},
         )
 
-        # Parse generated text safely depending on response format
         if isinstance(response, list) and len(response) > 0:
             generated_text = response[0].get('generated_text', '')
         elif isinstance(response, dict):
@@ -93,9 +90,7 @@ def call_llm_api(prompt: str) -> str:
 question = st.text_input("Ask something", placeholder="Type your question here...")
 
 if question:
-    # Search vectorstore for similarity scores with the question
     docs_scores = vectorstore.similarity_search_with_score(question, k=3)
-
     use_general_llm = True
 
     if docs_scores:
@@ -105,12 +100,10 @@ if question:
             use_general_llm = False
 
     if not use_general_llm:
-        # Retrieve relevant docs from vectorstore
         retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
         retrieved_docs = retriever.get_relevant_documents(question)
-
-        # Combine retrieved docs as context for prompt
         context_text = "\n\n".join([doc.page_content for doc in retrieved_docs])
+
         prompt = (
             f"Use the following context to answer the question clearly:\n\n"
             f"{context_text}\n\nQuestion: {question}\nAnswer:"
@@ -121,7 +114,6 @@ if question:
         st.write(answer)
 
     else:
-        # Use general LLM without extra context
         prompt = f"Answer the following question clearly and correctly:\n\nQuestion: {question}\nAnswer:"
         answer = call_llm_api(prompt)
         st.markdown("### Answer (general knowledge)")
