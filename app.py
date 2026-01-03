@@ -13,6 +13,7 @@ SIMILARITY_THRESHOLD = 0.75  # Threshold to decide when to use document context
 DOC_PATH = "data/sample.docx"
 EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 LLM_MODEL = "moonshotai/Kimi-K2-Instruct-0905"
+Hf_TOKEN = "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"
 
 # Read Hugging Face token from environment variable ONLY
 HF_TOKEN = os.getenv("HF_TOKEN")
