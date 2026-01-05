@@ -7,18 +7,17 @@ from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.vectorstores import FAISS
 from langchain.llms import HuggingFacePipeline
 from langchain.chains import RetrievalQA
-
 from transformers import pipeline
 
 # ---------------------------------
 # CONFIG
 # ---------------------------------
-SIMILARITY_THRESHOLD = 0.75
 DOC_PATH = "data/sample.docx"
 EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 LLM_MODEL = "google/flan-t5-base"
+SIMILARITY_THRESHOLD = 0.75
 
-st.set_page_config(page_title="Chatbot", layout="centered")
+st.set_page_config(page_title="RAG Chatbot", layout="centered")
 st.title("Chatbot")
 
 # ---------------------------------
@@ -45,12 +44,12 @@ def load_embeddings():
 embeddings = load_embeddings()
 
 # ---------------------------------
-# LOAD DOCUMENT & VECTORSTORE
+# LOAD VECTORSTORE
 # ---------------------------------
 @st.cache_resource
 def load_vectorstore():
     if not os.path.exists(DOC_PATH):
-        raise FileNotFoundError("data/sample.docx not found")
+        raise FileNotFoundError("sample.docx not found in data folder")
 
     loader = Docx2txtLoader(DOC_PATH)
     documents = loader.load()
@@ -66,46 +65,66 @@ def load_vectorstore():
 vectorstore = load_vectorstore()
 
 # ---------------------------------
-# USER INPUT
+# SESSION STATE
 # ---------------------------------
-question = st.text_input("Ask something")
+if "question" not in st.session_state:
+    st.session_state.question = ""
 
-if question:
-    docs_scores = vectorstore.similarity_search_with_score(
-        question, k=3
-    )
+if "answer" not in st.session_state:
+    st.session_state.answer = ""
 
-    use_general_llm = True
+# ---------------------------------
+# FUNCTION TO PROCESS QUESTION
+# ---------------------------------
+def process_question():
+    question = st.session_state.question
+    if not question:
+        return
 
-    if docs_scores:
-        best_score = docs_scores[0][1]
-        if best_score < SIMILARITY_THRESHOLD:
-            use_general_llm = False
+    docs_scores = vectorstore.similarity_search_with_score(question, k=3)
+    use_rag = False
+    if docs_scores and docs_scores[0][1] < SIMILARITY_THRESHOLD:
+        use_rag = True
 
-    # ---------------------------------
-    # DOCUMENT-BASED (RAG)
-    # ---------------------------------
-    if not use_general_llm:
+    if use_rag:
         retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
-
         qa_chain = RetrievalQA.from_chain_type(
             llm=llm,
             chain_type="stuff",
             retriever=retriever
         )
-
         result = qa_chain(question)
-        st.write(result["result"])
-
-    # ---------------------------------
-    # GENERAL KNOWLEDGE FALLBACK
-    # ---------------------------------
+        st.session_state.answer = result["result"]
     else:
         prompt = f"""
-Answer the following question clearly and correctly.
+You are a helpful RAG-based chatbot.
+You are built using the Flan-T5 Large Language Model.
+If the user asks "Which LLM is used?",
+reply exactly:
+"This chatbot uses the Flan-T5 LLM."
+
+Answer the question clearly.
 
 Question:
 {question}
 """
-        response = llm(prompt)
-        st.write(response)
+        st.session_state.answer = llm(prompt)
+
+    # Clear input after processing
+    st.session_state.question = ""
+
+# ---------------------------------
+# USER INPUT (ENTER KEY ONLY)
+# ---------------------------------
+st.text_input(
+    "Ask something",
+    key="question",
+    on_change=process_question
+)
+
+# ---------------------------------
+# DISPLAY ANSWER
+# ---------------------------------
+if st.session_state.answer:
+    st.markdown("### Answer")
+    st.write(st.session_state.answer)
